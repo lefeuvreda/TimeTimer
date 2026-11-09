@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7fb">
+  <meta name="description" content="Minuteur visuel simple et accessible, utilisable hors connexion sur tablette et ordinateur.">
+  <title>Mon minuteur visuel · ULIS</title>
+  <style>
+    :root { --ink:#243145; --muted:#67768b; --surface:#fff; --back:#f5f7fb; --line:#e2e8f1; --track:#eaf0f5; --accent:#5e90ce; --accent-deep:#376eaf; --accent-pale:#ebf3fc; --shadow:0 10px 35px rgba(32,53,79,.075); }
+    * { box-sizing:border-box; }
+    html { min-height:100%; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:var(--back); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+    button,input { font:inherit; }
+    button { cursor:pointer; }
+    button:disabled { cursor:not-allowed; opacity:.38; }
+    button:focus-visible,input:focus-visible { outline:3px solid var(--accent-deep); outline-offset:3px; }
+    .shell { max-width:1320px; margin:auto; padding:clamp(17px,3vw,34px); }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .mark { width:42px;height:42px;border-radius:14px;background:var(--accent-pale);display:grid;place-items:center; flex-shrink:0; }
+    .mark span { display:block; width:23px;height:23px;border:6px solid var(--accent); border-right-color:transparent; transform:rotate(-35deg);border-radius:50%; }
+    h1 { font-size:clamp(1.25rem,2.1vw,1.65rem);line-height:1.25;margin:0;font-weight:760;letter-spacing:-.03em; }
+    .subtitle { color:var(--muted); font-size:.91rem; margin:4px 0 0; }
+    .header-actions { display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px; }
+    .icon-btn { background:#fff; border:1px solid var(--line); color:var(--ink); border-radius:12px; min-height:45px; padding:9px 14px; font-weight:650; font-size:.91rem; }
+    .icon-btn:hover { background:#f8fbfe; }
+    .main-grid { display:grid; grid-template-columns:minmax(440px,1.35fr) minmax(330px,.87fr);gap:24px;align-items:stretch; }
+    .panel { background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow); }
+    .timer-panel { padding:clamp(18px,3vw,32px);display:flex;align-items:center;flex-direction:column;justify-content:center;min-width:0; }
+    .status { padding:7px 14px;border-radius:999px;background:var(--accent-pale); color:var(--accent-deep);font-size:.9rem;font-weight:750;letter-spacing:.015em; min-width:100px;text-align:center; }
+    .status[data-mode="done"] { background:#e8f4eb;color:#286c41; }
+    .status[data-mode="paused"] { background:#fff2dc;color:#8c620f; }
+    .dial-wrap { width:min(100%, 490px);padding:14px; position:relative;margin:16px auto 10px; }
+    .dial { --pct:100%;width:100%; aspect-ratio:1;position:relative;border-radius:50%;background:conic-gradient(from 0deg, var(--accent) 0 var(--pct), var(--track) var(--pct) 100%);box-shadow:inset 0 0 0 2px rgba(33,54,79,.05),0 12px 28px rgba(30,66,95,.08);display:grid;place-items:center; }
+    .dial::before { content:"";display:block;position:absolute;width:60%;height:60%;border-radius:50%;background:#fff;box-shadow:0 5px 18px rgba(25,48,78,.10), 0 0 0 1px rgba(255,255,255,.7); }
+    .dial-inner { z-index:1;max-width:58%;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center; }
+    .dial-label { color:var(--muted);font-size:clamp(.8rem,1.5vw,1rem);font-weight:600; }
+    .time { font-size:clamp(2.35rem,5.5vw,4.4rem);font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-.065em;line-height:1.14;font-weight:790;margin:8px 0; }
+    .task-label { color:#53657d;font-size:clamp(.75rem,1.35vw,.92rem);line-height:1.3;overflow-wrap:anywhere;max-height:3em;overflow:hidden; }
+    .dial-marker { position:absolute;width:14px;height:14px;background:#273c59;top:6px;left:calc(50% - 7px);border-radius:50%;box-shadow:0 0 0 3px #fff; }
+    .main-controls { display:flex;flex-wrap:wrap;justify-content:center;gap:10px;width:100%;margin-top:14px; }
+    .primary,.secondary { min-height:57px;padding:13px 22px;border-radius:14px;border:1px solid transparent;font-weight:750;font-size:1rem;display:inline-flex;justify-content:center;align-items:center;gap:8px; }
+    .primary { color:white;background:var(--accent-deep);min-width:150px; }
+    .primary:not(:disabled):hover { filter:brightness(.92); }
+    .secondary { background:#f5f8fc;border-color:var(--line);color:var(--ink);min-width:118px; }
+    .secondary:not(:disabled):hover { background:#eaf1f9; }
+    .helper { margin-top:17px;font-size:.86rem;color:var(--muted);text-align:center;line-height:1.5; }
+    .sidebar { padding:26px;display:flex;flex-direction:column;gap:23px; }
+    .section { display:flex;flex-direction:column;gap:12px; }
+    h2 { font-size:1.02rem;letter-spacing:-.015em;margin:0;font-weight:750; }
+    .section-note { color:var(--muted);font-size:.88rem;line-height:1.45;margin:0; }
+    .presets { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px; }
+    .preset { border:1px solid var(--line);border-radius:12px;min-height:57px;background:#f9fbfe;color:var(--ink);font-weight:700;font-size:1.04rem; }
+    .preset[aria-pressed="true"] { background:var(--accent-pale);color:var(--accent-deep);border:2px solid var(--accent-deep); }
+    .preset small { display:block;font-weight:500;font-size:.72rem;margin-top:1px; }
+    .field-row { display:flex;gap:10px;align-items:flex-end; }
+    .field { min-width:0;flex:1; }
+    .field label { display:block;color:var(--muted);font-size:.83rem;font-weight:650;margin-bottom:6px; }
+    .field input { display:block;width:100%;padding:12px 12px;min-height:49px;background:#fff;border:1px solid #cdd7e5;border-radius:11px;color:var(--ink); }
+    .apply { min-height:49px;border-radius:11px;border:0;background:#eaf1f9;color:#2c547f;font-weight:750;padding:10px 15px; }
+    .validation { color:#ad3e3e;font-size:.81rem;min-height:1.2em;margin:0; }
+    .rule { border:0;border-top:1px solid var(--line);margin:0; }
+    .toggle-line { display:flex;align-items:center;gap:10px;font-size:.94rem;font-weight:600;cursor:pointer; }
+    .toggle-line input { width:20px;height:20px;accent-color:var(--accent-deep);cursor:pointer; }
+    .swatches { display:flex;flex-wrap:wrap;gap:9px; }
+    .swatch { display:inline-flex;align-items:center;gap:8px;min-height:43px;padding:7px 11px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);font-weight:630;font-size:.88rem; }
+    .swatch[aria-pressed="true"] { border:2px solid var(--ink);background:#f8fafc;padding:6px 10px; }
+    .color-dot { width:16px;height:16px;border-radius:50%;background:var(--dot); }
+    .tip { background:#f8fafc;border:1px solid var(--line);border-radius:13px;padding:14px 15px;font-size:.86rem;color:var(--muted);line-height:1.55; }
+    .tip strong { color:var(--ink); }
+    .footer { margin-top:20px;color:var(--muted);font-size:.8rem;line-height:1.5;text-align:center; }
+    body.focus .main-grid { max-width:800px;grid-template-columns:minmax(0,1fr);margin:auto; }
+    body.focus .sidebar { display:none; }
+    body.focus .dial-wrap { width:min(70vh,100%,590px); }
+    body.focus .timer-panel { min-height:calc(100dvh - 190px); }
+    @media (max-width:900px) { .main-grid {grid-template-columns:1fr;} .timer-panel{min-height:0;} .dial-wrap{width:min(77vw,490px);} .sidebar{padding:24px;} }
+    @media (max-width:560px) { .shell{padding:13px;} .topbar{align-items:flex-start;} .header-actions{gap:6px;} .icon-btn{padding:9px;font-size:.79rem;} .subtitle{display:none;} .brand{gap:8px;} .mark{height:35px;width:35px;border-radius:10px;} .mark span{height:20px;width:20px;border-width:5px;} .main-grid{gap:14px;} .panel{border-radius:18px;} .timer-panel{padding:17px 10px;} .dial-wrap{width:min(93vw,470px);padding:10px;margin:14px auto 6px;} .dial-marker{top:3px;} .main-controls{gap:7px;} .primary,.secondary{min-width:0;min-height:53px;padding:10px 14px;flex:1;font-size:.93rem;} .time{font-size:clamp(2.15rem,9vw,3.6rem);} .sidebar{padding:20px;} .field-row{gap:7px;} .apply{padding:9px;} .helper{font-size:.78rem;} }
+    @media (prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior:auto !important;animation:none !important;transition:none !important; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="mark" aria-hidden="true"><span></span></div><div><h1>Mon minuteur visuel</h1><p class="subtitle">Voir le temps qui passe, une étape à la fois</p></div></div>
+      <div class="header-actions"><button class="icon-btn" id="focusBtn" type="button" aria-pressed="false">Mode épuré</button><button class="icon-btn" id="fullscreenBtn" type="button">Plein écran</button></div>
+    </header>
+    <main class="main-grid">
+      <section class="panel timer-panel" aria-label="Minuteur">
+        <div class="status" id="status" data-mode="idle" role="status" aria-live="polite">Prêt</div>
+        <div class="dial-wrap">
+          <div class="dial" id="dial" role="img" aria-label="100 pour cent du temps restant">
+            <div class="dial-inner">
+              <span class="dial-label" id="timeLabel">Temps restant</span>
+              <strong class="time" id="timeReadout" aria-label="5 minutes restantes">05:00</strong>
+              <span class="task-label" id="taskText">Une étape à la fois</span>
+            </div>
+          </div>
+          <span class="dial-marker" aria-hidden="true"></span>
+        </div>
+        <div class="main-controls">
+          <button class="primary" id="startBtn" type="button">▶ Démarrer</button>
+          <button class="secondary" id="pauseBtn" type="button" disabled>Ⅱ Pause</button>
+          <button class="secondary" id="resetBtn" type="button">↺ Recommencer</button>
+        </div>
+        <div class="helper" id="helper">Choisis une durée, puis appuie sur « Démarrer ».</div>
+      </section>
+      <aside class="panel sidebar" aria-label="Réglages du minuteur">
+        <section class="section">
+          <h2>Choisir une durée</h2>
+          <p class="section-note">Appuie sur une durée pour préparer le minuteur.</p>
+          <div class="presets" id="presets">
+            <button class="preset" data-minutes="1" aria-pressed="false" type="button">1 <small>min</small></button>
+            <button class="preset" data-minutes="2" aria-pressed="false" type="button">2 <small>min</small></button>
+            <button class="preset" data-minutes="3" aria-pressed="false" type="button">3 <small>min</small></button>
+            <button class="preset" data-minutes="5" aria-pressed="true" type="button">5 <small>min</small></button>
+            <button class="preset" data-minutes="10" aria-pressed="false" type="button">10 <small>min</small></button>
+            <button class="preset" data-minutes="15" aria-pressed="false" type="button">15 <small>min</small></button>
+            <button class="preset" data-minutes="20" aria-pressed="false" type="button">20 <small>min</small></button>
+            <button class="preset" data-minutes="30" aria-pressed="false" type="button">30 <small>min</small></button>
+          </div>
+          <form id="customForm" novalidate>
+            <div class="field-row">
+              <div class="field"><label for="customMinutes">Minutes</label><input id="customMinutes" name="minutes" type="number" min="0" max="180" step="1" value="5" inputmode="numeric"></div>
+              <div class="field"><label for="customSeconds">Secondes</label><input id="customSeconds" name="seconds" type="number" min="0" max="59" step="1" value="0" inputmode="numeric"></div>
+              <button class="apply" type="submit">Appliquer</button>
+            </div>
+            <p class="validation" id="validation" role="alert"></p>
+          </form>
+        </section>
+        <hr class="rule">
+        <section class="section">
+          <h2>Mon activité</h2>
+          <p class="section-note">Facultatif : indique ce que tu souhaites terminer.</p>
+          <div class="field"><label for="taskInput">Ce que je fais</label><input id="taskInput" type="text" maxlength="48" placeholder="Ex. Je termine trois questions" autocomplete="off"></div>
+        </section>
+        <hr class="rule">
+        <section class="section">
+          <h2>Préférences</h2>
+          <label class="toggle-line"><input type="checkbox" id="soundCheck"> Signal sonore à la fin</label>
+          <p class="section-note">Désactivé au départ pour éviter de surprendre les élèves.</p>
+          <div class="swatches" role="group" aria-label="Couleur du disque">
+            <button class="swatch" id="blueBtn" data-color="blue" aria-pressed="true" type="button"><span class="color-dot" style="--dot:#5e90ce"></span>Bleu</button>
+            <button class="swatch" id="coralBtn" data-color="coral" aria-pressed="false" type="button"><span class="color-dot" style="--dot:#ed8b78"></span>Corail</button>
+            <button class="swatch" id="greenBtn" data-color="green" aria-pressed="false" type="button"><span class="color-dot" style="--dot:#72a995"></span>Vert</button>
+          </div>
+        </section>
+        <div class="tip"><strong>Pour l'accompagnement en classe</strong> : annoncer l'objectif, montrer le temps restant, puis permettre à l'élève de commencer. Le minuteur est un repère, pas une sanction ni une obligation de terminer sous pression.</div>
+      </aside>
+    </main>
+    <footer class="footer">Fonctionne sans connexion • Aucun compte • Aucune donnée envoyée • Conçu pour un usage pédagogique</footer>
+  </div>
+  <script>
+    (() => {
+      'use strict';
+      const $ = id => document.getElementById(id);
+      const dial = $('dial'), timeReadout = $('timeReadout'), timeLabel = $('timeLabel');
+      const status = $('status'), helper = $('helper');
+      const startBtn = $('startBtn'), pauseBtn = $('pauseBtn'), resetBtn = $('resetBtn');
+      const customMinutes = $('customMinutes'), customSeconds = $('customSeconds');
+      const validation = $('validation'), taskInput = $('taskInput'), taskText = $('taskText');
+      let durationMs = 5 * 60 * 1000;
+      let remainingMs = durationMs;
+      let endAt = null;
+      let state = 'idle'; // idle | running | paused | done
+      let interval = null;
+      let audioContext = null;
+      const colors = {
+        blue: {accent:'#5e90ce', deep:'#376eaf', pale:'#ebf3fc'},
+        coral:{accent:'#ed8b78', deep:'#ad5746', pale:'#fff0ec'},
+        green:{accent:'#72a995', deep:'#386f5e', pale:'#e9f5ef'}
+      };
+      function spokenTime(ms) {
+        const seconds = Math.max(0,Math.ceil(ms / 1000));
+        const mins = Math.floor(seconds / 60), rem = seconds % 60;
+        return `${mins} minute${mins > 1 ? 's' : ''} et ${rem} seconde${rem > 1 ? 's' : ''} restantes`;
+      }
+      function format(ms) {
+        const seconds = Math.max(0, Math.ceil(ms / 1000));
+        return String(Math.floor(seconds/60)).padStart(2,'0') + ':' + String(seconds%60).padStart(2,'0');
+      }
+      function draw() {
+        const fraction = durationMs ? Math.max(0, Math.min(1, remainingMs / durationMs)) : 0;
+        dial.style.setProperty('--pct', (fraction * 100).toFixed(3) + '%');
+        const pct = Math.round(fraction * 100);
+        dial.setAttribute('aria-label', `${pct} pour cent du temps restant`);
+        timeReadout.textContent = format(remainingMs);
+        timeReadout.setAttribute('aria-label', spokenTime(remainingMs));
+      }
+      function updateControls() {
+        startBtn.disabled = state === 'running';
+        pauseBtn.disabled = state !== 'running';
+        startBtn.textContent = state === 'paused' ? '▶ Reprendre' : state === 'done' ? '▶ Recommencer' : '▶ Démarrer';
+        const messages = {
+          idle:['Prêt','Choisis une durée, puis appuie sur « Démarrer ».'],
+          running:['En cours','Tu peux avancer à ton rythme.'],
+          paused:['En pause','Le temps est arrêté. Reprends quand tu es prêt.'],
+          done:['Temps terminé','L’activité peut maintenant être arrêtée ou poursuivie si besoin.']
+        };
+        status.textContent = messages[state][0];
+        status.dataset.mode = state;
+        helper.textContent = messages[state][1];
+        timeLabel.textContent = state === 'done' ? 'C’est terminé' : 'Temps restant';
+      }
+      function stopInterval() { if(interval !== null) { clearInterval(interval);interval=null; } }
+      function tick() {
+        if(state !== 'running') return;
+        remainingMs = Math.max(0,endAt - Date.now());
+        draw();
+        if(remainingMs <= 0) {
+          stopInterval();state='done';endAt=null;updateControls();
+          if($('soundCheck').checked) playChime();
+          if(navigator.vibrate && $('soundCheck').checked) navigator.vibrate([120,80,120]);
+        }
+      }
+      function primeAudio() {
+        if(!$('soundCheck').checked) return;
+        try {
+          if(!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          if(audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+        } catch(e) { /* Optional audio unsupported */ }
+      }
+      function playChime() {
+        if(!audioContext) return;
+        try {
+          const now = audioContext.currentTime;
+          [0,0.29].forEach((offset,index) => {
+            const osc = audioContext.createOscillator(), gain = audioContext.createGain();
+            osc.type='sine';osc.frequency.value=index ? 698 : 523;
+            gain.gain.setValueAtTime(0.0001,now+offset);
+            gain.gain.exponentialRampToValueAtTime(0.12,now+offset+0.018);
+            gain.gain.exponentialRampToValueAtTime(0.0001,now+offset+0.25);
+            osc.connect(gain).connect(audioContext.destination);
+            osc.start(now+offset);osc.stop(now+offset+0.28);
+          });
+        } catch(e) { /* Silence if sound cannot play */ }
+      }
+      function selectPresetUI() {
+        const exactMinutes = durationMs/60000;
+        document.querySelectorAll('.preset').forEach(btn => btn.setAttribute('aria-pressed',String(Number(btn.dataset.minutes) === exactMinutes)));
+      }
+      function setDuration(ms) {
+        stopInterval();durationMs=ms;remainingMs=ms;endAt=null;state='idle';
+        customMinutes.value=Math.floor(ms / 60000);
+        customSeconds.value=(ms / 1000) % 60;
+        validation.textContent='';
+        selectPresetUI();draw();updateControls();
+      }
+      function start() {
+        if(state === 'running') return;
+        primeAudio();
+        if(state === 'done') remainingMs=durationMs;
+        endAt=Date.now()+remainingMs;
+        state='running';
+        stopInterval();interval=setInterval(tick,100);draw();updateControls();
+      }
+      function pause() {
+        if(state !== 'running') return;
+        remainingMs=Math.max(0,endAt-Date.now());
+        stopInterval();endAt=null;state=remainingMs ? 'paused' : 'done';draw();updateControls();
+      }
+      startBtn.addEventListener('click',start);
+      pauseBtn.addEventListener('click',pause);
+      resetBtn.addEventListener('click',()=>setDuration(durationMs));
+      document.querySelectorAll('.preset').forEach(btn => btn.addEventListener('click',()=>setDuration(Number(btn.dataset.minutes)*60000)));
+      $('customForm').addEventListener('submit',e=>{
+        e.preventDefault();
+        const m=Number(customMinutes.value),s=Number(customSeconds.value);
+        if(customMinutes.value.trim()===''||customSeconds.value.trim()===''||!Number.isInteger(m)||!Number.isInteger(s)||m<0||m>180||s<0||s>59||m*60+s===0||m*60+s>180*60) {
+          validation.textContent='Entre une durée de 1 seconde à 180 minutes (0 à 59 secondes).';return;
+        }
+        setDuration((m*60+s)*1000);
+      });
+      taskInput.addEventListener('input',()=>{taskText.textContent=taskInput.value.trim()||'Une étape à la fois';});
+      $('soundCheck').addEventListener('change',primeAudio);
+      document.querySelectorAll('.swatch').forEach(btn=>btn.addEventListener('click',()=>{
+        const c=colors[btn.dataset.color];
+        document.documentElement.style.setProperty('--accent',c.accent);
+        document.documentElement.style.setProperty('--accent-deep',c.deep);
+        document.documentElement.style.setProperty('--accent-pale',c.pale);
+        document.querySelectorAll('.swatch').forEach(b=>b.setAttribute('aria-pressed',String(b===btn)));
+      }));
+      $('focusBtn').addEventListener('click',()=>{
+        const isFocus=document.body.classList.toggle('focus');
+        $('focusBtn').setAttribute('aria-pressed',String(isFocus));
+        $('focusBtn').textContent=isFocus?'Afficher les réglages':'Mode épuré';
+      });
+      $('fullscreenBtn').addEventListener('click',async()=>{
+        try {
+          if(document.fullscreenElement) await document.exitFullscreen();
+          else if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+          else helper.textContent='Le plein écran n’est pas disponible dans ce navigateur.';
+        } catch(e) { helper.textContent='Le plein écran n’est pas autorisé dans ce navigateur.'; }
+      });
+      document.addEventListener('fullscreenchange',()=>{$('fullscreenBtn').textContent=document.fullscreenElement?'Quitter le plein écran':'Plein écran';});
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+      document.addEventListener('keydown',e=>{
+        if(e.code!=='Space'||e.repeat||e.altKey||e.ctrlKey||e.metaKey) return;
+        const tag=(document.activeElement && document.activeElement.tagName)||'';
+        if(['INPUT','TEXTAREA','BUTTON','SELECT'].includes(tag)) return;
+        e.preventDefault();state==='running'?pause():start();
+      });
+      draw();updateControls();
+    })();
+  </script>
+</body>
+</html>

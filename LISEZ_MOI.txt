@@ -1,0 +1,14 @@
+MON MINUTEUR VISUEL — MODE D'EMPLOI
+
+1. Ouvrir Mon_minuteur_visuel_ULIS.html dans un navigateur (Firefox, Chrome, Safari, Edge).
+2. Sélectionner une durée (ou saisir les minutes et les secondes, puis cliquer sur Appliquer).
+3. Cliquer sur Démarrer. Le disque coloré diminue avec le temps restant.
+4. Cliquer sur Pause, Reprendre ou Recommencer selon le besoin.
+5. Pour la tablette : utiliser Mode épuré et, si disponible, Plein écran.
+
+Le son de fin est facultatif et désactivé par défaut.
+Le fichier HTML fonctionne hors connexion et n'envoie aucune donnée.
+Le clavier Espace permet de démarrer ou mettre en pause lorsque le focus n'est pas sur un bouton ou une saisie.
+
+PÉDAGOGIE
+Le minuteur peut rendre visible une durée de travail, mais ne doit pas être utilisé pour créer une pression ou sanctionner un élève.
